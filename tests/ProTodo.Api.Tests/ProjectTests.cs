@@ -75,6 +75,8 @@ public class ProjectTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var projects = await response.Content.ReadFromJsonAsync<List<ProjectResponse>>();
         Assert.Contains(projects!, p => p.Id == first.Id && p.Name == "List test A");
         Assert.Contains(projects!, p => p.Id == second.Id && p.Name == "List test B");
+        // Values read back from SQL Server must still be flagged as UTC (serialized with a trailing "Z").
+        Assert.All(projects!, p => Assert.Equal(DateTimeKind.Utc, p.CreatedAtUtc.Kind));
     }
 
     private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
