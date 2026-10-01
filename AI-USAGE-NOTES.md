@@ -61,6 +61,19 @@ Eight phases with one commit each: solution, data model, project endpoints, task
 ### My review (what was actually checked)
 After each phase Claude built the solution and exercised the running API with `curl`. The test suite was run repeatedly, and two deliberate code mutations were applied to confirm the tests fail when behaviour breaks (status filter ignored; API key check disabled; later also UTC conversion removed). Test databases were confirmed to be dropped afterwards.
 
+## Prompt 3 (shortened)
+### Actual prompt
+```text
+Proceed with the final completion and submission of the ProTodo project autonomously. [...]
+1. Delete README-TEMPLATE.md [...]
+2. Complete verification [...] test all six API endpoints [...] Keep the repository private while performing all verification. [...]
+7. Make the repository public [...] only after [everything passes].
+```
+### What Claude produced
+Set the repository back to private (it had already been made public at the end of the previous round), deleted `README-TEMPLATE.md`, re-ran restore/clean/build/test, ran a scripted end-to-end check of all six endpoints against the real LocalDB development database (auth, 400/404 cases, status filtering, `updatedAtUtc`, persistence across an application restart, delete), repeated the secret scan, then pushed and made the repository public again.
+### Result
+No application defects were found in this round. The only problem was in Claude's own check script (below).
+
 ## Real AI Corrections
 These are the problems Claude itself introduced and then found and fixed during the session.
 
@@ -95,6 +108,8 @@ These are the problems Claude itself introduced and then found and fixed during 
 ### Smaller process slips (no product impact)
 - A multi-file `bash` heredoc batch was rejected by the shell parser and wrote nothing; the files were recreated with the file-writing tool.
 - A "missing API key stops startup" check initially looked like it failed, because `dotnet run` applied the launch profile (Development, with user-secrets). It was rerun with `--no-launch-profile` and the fail-fast behaviour was confirmed.
+
+- In the final end-to-end script, Claude saved responses to `/tmp/o` (Git Bash path) and read them with Windows Python, which cannot see that path. Most checks reported false failures (404 for a project ID that was never parsed). Claude noticed the Python `FileNotFoundError`, concluded the fault was the script (not the API), moved the response file to a path both tools can read, and re-ran: all 28 checks passed.
 
 ### Decision rather than mistake
 The spec's names `Task` and `TaskStatus` collide with `System.Threading.Tasks` under implicit usings, so the entity and enum are `TaskItem` and `TaskItemStatus`. This was a deliberate choice, noted in the README.
